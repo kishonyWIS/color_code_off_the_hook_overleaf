@@ -1,0 +1,13 @@
+# OS
+.DS_Store
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.dvi
+*.fdb_latexmk
+*.fls
+*.synctex.gz

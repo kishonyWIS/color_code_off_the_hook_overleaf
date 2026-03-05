@@ -1,0 +1,253 @@
+% !TeX program = latexmk
+% !TeX root = main.tex
+\documentclass[twocolumn,
+aps,
+prx,
+showpacs,
+amsmath,
+amssymb,
+floatfix,
+longbibliography,
+superscriptaddress,
+eprint]
+{revtex4-1}
+
+\usepackage{subfigure}
+\usepackage{amsfonts}
+
+\usepackage{xcolor}
+\definecolor{darkblue}{RGB}{0,0,150}
+\definecolor{nightblue}{RGB}{0,0,100}
+
+\usepackage{graphicx,mathtools,bm,bbm}
+\usepackage{tikz}
+\graphicspath{{./}}
+\usepackage{booktabs}
+\usepackage{MnSymbol}
+\usepackage[
+colorlinks,
+citecolor=darkblue,
+linkcolor=darkblue,
+urlcolor=nightblue]{hyperref}
+\usepackage{xurl}
+
+\usepackage[english]{babel}
+\usepackage[babel,kerning=true,spacing=true]{microtype}
+\usepackage[utf8]{inputenc}
+
+\usepackage{soul}
+
+\newcommand{\ket}[1]{{\left|#1\right\rangle}}
+\newcommand{\bra}[1]{{\left\langle #1\right|}}
+
+% Placeholder for figures not yet available
+\newcommand{\figureplaceholder}[1]{%
+  \noindent\fbox{\parbox{\dimexpr\columnwidth-2\fboxsep-2\fboxrule}{%
+    \centering\vspace{1.5cm}\textit{[Placeholder: #1]}\vspace{1.5cm}}}%
+}
+
+\begin{document}
+
+\title{Color code off-the-hook: avoiding hook errors with a single auxiliary per plaquette}
+
+\author{Gilad Kishony}
+\affiliation{Classiq Technologies. 3 Daniel Frisch Street, Tel Aviv-Yafo, 6473104, Israel.}
+
+\begin{abstract}
+Syndrome extraction in the planar color code is complicated by high weight stabilizers and hook errors that can reduce circuit-level distance.
+With a single auxiliary qubit per plaquette, any spatially uniform circuit halves the circuit-level distance.
+We propose a single-auxiliary syndrome extraction circuit with color-dependent gate schedules that avoids all malign hook errors in the bulk preserving full circuit-level distance.
+% The color code is a topological quantum error correcting code that, like the surface code, can be implemented on planar hardware.
+% It offers transversal Clifford gates, fewer qubits for the same code distance, and efficient magic state cultivation.
+% Syndrome extraction in the color code is more difficult than in the surface code due to the higher weight of its stabilizer generators and the complex structure of logical operators.
+% Any spatially uniform circuit that uses a single auxiliary qubit per plaquette suffers a reduction in circuit-level code distance by a factor of two due to hook errors.
+% We propose a syndrome extraction circuit that uses a single auxiliary per plaquette but assigns a different gate schedule to plaquettes of each color, so that all malign hook errors are avoided and full circuit-level distance is preserved in the bulk.
+The circuit has minimal depth: all X stabilizers are measured in parallel in six time steps, and all Z stabilizers in six time steps.
+At the boundary, no single hook error alone reduces the distance; only certain combinations of hook errors do, which we call fractional hook errors.
+We compare our circuit to uniform single-auxiliary, middle-out, and superdense circuits in Monte Carlo simulations and find a XXX\% reduction in teraquop footprint under the realistic SI1000 error model at physical error rate $p = XXX\%$ compared to the next-best alternative.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+\label{sec:intro}
+
+The color code~\cite{bombin2006color} is a topological quantum error correcting code that, like the surface code~\cite{dennis2002topological, fowler2012surface}, can be implemented on planar hardware.
+The color code is an attractive candidate for fault-tolerant quantum computation because Clifford gates can be implemented transversally~\cite{bombin2006color}, it requires fewer physical qubits than the surface code for the same code distance~\cite{Thomsen_2024}, and it admits efficient magic state cultivation~\cite{gidney2024magicstatecultivationgrowing}.
+However, syndrome extraction in the color code is more difficult than in the surface code for two main reasons.
+First, its stabilizer generators in the bulk of the honeycomb lattice have weight six, compared to weight four in the surface code, which leads to a larger number of possible hook error combinations per stabilizer.
+Second, logical operators in the color code can equivalently propagate across the system in multiple different directions, whereas in the surface code they follow a path along a specific direction.
+
+Asymptotically, the color code uses $\frac{3}{4}d^2$ data qubits to achieve a (phenomenological) code distance $d$, compared with $d^2$ for the rotated surface code.
+A more informative figure of merit, however, is the total number of qubits $n_{\mathrm{tot}}$ (data and auxiliary) divided by the square of the circuit-level distance $d_{\mathrm{circ}}$ (the minimum number of circuit faults that can cause a logical error).
+A hook error is an error on an auxiliary qubit midway through syndrome extraction that propagates through the remaining two-qubit gates into a correlated error on multiple data qubits.
+In the surface code, a favorable syndrome extraction schedule can avoid all malign hook errors that lead to circuit-level distance reduction~\cite{kishony2025surface}.
+In the color code, by contrast, any spatially uniform circuit that uses the conventional single auxiliary qubit per plaquette for syndrome extraction suffers a reduction in the circuit-level code distance by a factor of two, which undermines its competitive edge.
+
+Much work has been done on the design of syndrome extraction circuits for the color code \cite{beverland2021cost, lee2025colorcode, gidney2023colorcode, yoshida2025lowdepthcolorcode, PRXQuantum.5.030352}.
+In particular, Beverland et al.~\cite{beverland2021cost} and Lee et al.~\cite{lee2025colorcode} optimized spatially uniform single-auxiliary circuits (three qubits per plaquette), showing substantial logical error rate improvements, yet the distance-halving limitation remains.
+Gidney and Jones~\cite{gidney2023colorcode} suggested circuits that are not of this form: the ``middle-out'' circuit uses zero auxiliaries per plaquette (two qubits per plaquette), and the ``superdense'' circuit uses two auxiliaries per plaquette (four qubits per plaquette).
+The middle-out circuit suffers the same halved distance but reduces the total number of qubits required to achieve a given circuit-level distance.
+The superdense circuit achieves full circuit-level distance by measuring both X and Z stabilizers in the same plaquette in parallel, where each auxiliary additionally serves as a flag for hook errors acting on the other; this comes at the cost of extra qubits.
+Since the conventional and middle-out circuits have $d_{\mathrm{circ}} = d/2$, they achieve $n_{\mathrm{tot}}/d_{\mathrm{circ}}^2 \sim \frac{9}{2}$ and $n_{\mathrm{tot}}/d_{\mathrm{circ}}^2 \sim 3$ respectively; for the superdense circuit, $d_{\mathrm{circ}} = d$, giving $n_{\mathrm{tot}}/d_{\mathrm{circ}}^2 \sim \frac{3}{2}$.
+
+In this work we propose a syndrome extraction circuit that uses a single auxiliary per plaquette yet maintains full circuit-level distance in the bulk, achieving $n_{\mathrm{tot}}/d_{\mathrm{circ}}^2 \sim \frac{9}{8}$.
+The crucial insight is that different hook errors are malign in plaquettes of different colors, and therefore a different gate schedule should be used for plaquettes of each color.
+We construct a circuit for which the hook errors in plaquettes of each color are all benign.
+We maintain the minimal circuit depth possible with a single ancilla per plaquette: all Pauli-X stabilizers are measured in parallel in six time steps, and all Z stabilizers are measured in parallel in six time steps.
+
+\begin{figure*}
+  \centering
+  \begin{tikzpicture}
+    \node[anchor=south west,inner sep=0] (img) at (0,0) {\includegraphics[width=\textwidth]{pairs_to_avoid_and_schedule.pdf}};
+    \node[anchor=south west,font=\LARGE\bfseries] at ([xshift=0.15\textwidth,yshift=-30pt]img.north west) {a};
+    \node[anchor=south west,font=\LARGE\bfseries] at ([xshift=0.67\textwidth,yshift=-30pt]img.north west) {b};
+  \end{tikzpicture}
+  \caption{\textbf{Malign hook errors and our schedule.}
+  \textbf{(a)} Illustration of all malign hook error pairs in plaquettes of each color (triplets not shown as they are benign).
+  Each highlighted pair would lead to a distance reduction of one if it could be generated by a hook error on the plaquette hosting the pair.
+  If any of the highlighted pairs could occur on all plaquettes of a color, the distance would be reduced by a factor of two.
+  The pairs themselves are colored according to the type of anyon that they would lead to a shortcut for.
+  Malign hook errors on trapezoidal plaquettes on the boundary are slightly different than those in the bulk.
+  On the plaquettes in the corners all hook errors are malign (not drawn).
+  \textbf{(b)} Our syndrome extraction circuit.
+  All malign hook errors are avoided in the bulk and the depth is minimal.
+  On the boundary certain combinations of hook errors can reduce the distance slightly; we call these ``fractional hook errors.''
+  Three hook errors (orange lines) and two data-qubit errors (orange dots) are equivalent to a sequence of six data-qubit errors (purple dots) along the boundary, forming a piece of a logical operator.
+  }
+  \label{fig:malign_and_schedule}
+  \end{figure*}
+
+% At the boundaries of the system, some combinations of hook errors still reduce the distance slightly.
+% Interestingly, there is no single hook error within our circuit that alone leads to a circuit-level distance reduction.
+% Only the combination of several hook errors along the boundary does so; we call these ``fractional hook errors.''
+
+% We compare our circuit against the uniform single-auxiliary, middle-out, and superdense circuits in Monte Carlo simulation and find that our circuit achieves a XXX\% reduction in teraquop footprint under the realistic SI1000 error model at physical error rate $p = XXX\%$.
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}
+    \node[anchor=south west,inner sep=0] (img) at (0,0) {\includegraphics[width=\columnwidth]{all_hook_errors.pdf}};
+    \node[anchor=south west,font=\LARGE\bfseries] at ([xshift=0.06\columnwidth,yshift=-12pt]img.north west) {a};
+    \node[anchor=south west,font=\LARGE\bfseries] at ([xshift=0.06\columnwidth,yshift=-105pt]img.north west) {b};
+    \node[anchor=south west,font=\LARGE\bfseries] at ([xshift=0.06\columnwidth,yshift=-200pt]img.north west) {c};
+  \end{tikzpicture}
+  \caption{\textbf{Hook error propagation.}
+  In each plaquette, there are three possible hook errors which can act on the auxiliary qubit during the measurement of each of the two Pauli stabilizers (dark blue/red).
+  Each of these errors propagates through the syndrome extraction circuit to form distinct correlated data-qubit errors (light blue/red).
+  \textbf{(a)} Errors occurring after the second CNOT during the measurement of each respective stabilizer.
+  \textbf{(b)} Errors between the third and fourth CNOTs.
+  \textbf{(c)} Errors between the fourth and fifth CNOTs.}
+  \label{fig:all_hook_errors}
+\end{figure}
+
+\section{Malign hook errors and schedule design}
+\label{sec:malign}
+
+The 2D color code is defined on the honeycomb lattice [see Fig.~\ref{fig:malign_and_schedule}]: data qubits sit on the vertices, and the faces can be colored red, green, and blue so that no two adjacent faces share a color.
+Likewise, each edge is assigned the common color of the two plaquettes it touches at its endpoints.
+For each face $f$, the code has an X-type and a Z-type stabilizer generator $S_f^X = \prod_{v \in f} X_v$ and $S_f^Z = \prod_{v \in f} Z_v$, so that each bulk stabilizer has weight six.
+Since the color code is a Calderbank–Shor–Steane (CSS) code, we can consider the effects of Pauli X and Z errors separately, furthermore, since the code is self-dual, the X and Z errors are equivalent.
+
+A Pauli X error on a single data qubit flips the value of the Z-type stabilizers on the three plaquettes that share that data qubit.
+These excitations are called red, green and blue anyons according to the color of the plaquettes on which they are located \cite{Kesselring_2024}.
+Anyons can be moved from one plaquette to another of the same color by Pauli X errors acting on data qubits at the two ends of an edge connecting between these two plaquettes.
+A single logical qubit is encoded on a trianglular patch with three distinct boundary types - red, green and blue according to the color of the plaquettes missing from each boundary.
+A logical X operator is a string-like product of Pauli X operators along a path of edges connecting between the three boundaries; the code distance $d$ is the minimum weight of such a logical operator.
+A logical operator can be thought of as propagating a red anyon from the red boundary, and green anyon from the green boundary and a blue anyon from the blue boundary to the same point in the bulk and then annihilating all three together.
+Equivallently, a logical operator can be written on the support of the data qubits along the entire length of one of the boundaries.
+
+We consider syndrome extraction circuits of the conventional form: one auxiliary qubit per plaquette, and each stabilizer measurement is implemented by coupling that auxiliary to the six data qubits of the plaquette via six two-qubit gates and then measuring the auxiliary.
+The same procedure is applied for X-type and Z-type stabilizers sequentially as illustrated in Fig.~\ref{fig:malign_and_schedule}(a).
+The order in which the six two-qubit gates are applied on each plaquette is the syndrome extraction schedule for that plaquette.
+A hook error is a Pauli error on the auxiliary partway through the six gates; it propagates through the gates acting after this point in the schedule, or equivalently through those applied in the earlier part, becoming a correlated error on the data qubits.
+Because each stabilizer has weight six, a given schedule yields three possible hook error combinations, depending on whether the fault occurs after the second, third, or fourth gate; these result in correlated data-qubit errors of weight 2, 3, and 2 respectively as illustrated in Fig.~\ref{fig:all_hook_errors}.
+
+Our key observation is that different hook errors are ``malign'' (i.e. serve as a shortcut for a logical operator) on different plaquettes.
+Therefore we suggest using a {\it different schedule for different plaquettes}, in contrast to all previous work which used a single schedule for all plaquettes.
+Since a low weight logical operator is supported on a direct path of edges connecting the three boundaries, its support does not include more than two data qubits of the same plaquette.
+For this reason, although the hook error triggered by a fault exactly halfway through the schedule of a plaquette leads to the highest weight correlated error, it is benign because it does not lead to a shortcut for a logical operator.
+In other words, such an error typically flips a large number of neighboring stabilizers which are then difficult to flip back with further errors.
+Therefore, in our initial analysis below we focus on the effects of weight-2 hook errors.
+
+Fig.~\ref{fig:malign_and_schedule}(a) shows all malign weight-2 correlated error pairs in plaquettes of each color (in the bulk we find that the set of malign pairs is the same in all plaquettes of the same color).
+To understand why these errors are malign, first consider the highlighted pairs which coincide with edges of the lattice.
+These pairs serve as shortcuts for anyons propagating along those edges, i.e. edges of specific colors and specific orientations.
+Shortcuts for logical operators are enabled by correlated errors on edges of each color oriented nearly perpendicularly to the boundary of the matching color.
+Highlighted pairs which do not coincide with edges of the lattice can be thought of as two halves of edges leading outwards from the plaquette hosting to correlated error.
+Such a pair is malign when both outgoing half-edges (which share the color of the plaquette hosting the error) are nearly perpendicular to the boundary of that color.
+
+While each of these individual highlighted correlated errors leads to a reduction by 1 of the circuit-level distance, we point out that {\it any} of these, if replicated to all plaquettes of the same color lead to a distance reduction by a factor of two.
+Furthermore, we note that any weight-2 correlated error pattern is malign on a plaquette of {\it some} color.
+This underlines the impossibility of avoiding the distance halving problem with a single auxiliary per plaquette with a {\it spatially uniform schedule}.
+
+To preserve full circuit-level distance in the bulk, we assign a different schedule to plaquettes of each color such that all malign hook errors are avoided [Figure~\ref{fig:malign_and_schedule}(b)].
+Furthermore, we design our circuit such that the schedules of neighboring plaquettes do not conflict (i.e. do not access the same data qubits at the same time) such that all stabilizers of the same Pauli type are measured in parallel using the minimal six steps of two-qubit gates.
+On the boundaries of the system, some plaquettes are trapezoidal and have four data qubits, rather than six.
+For simplicity, on these plaquettes, we simply assign the same schedule as for the bulk plaquettes of the same color, omitting the gates coupling the two data qubits that are not present.
+Finally, we note that any weight-2 correlated error on these weight-4 plaquettes which coincides with one of its edges is malign.
+We therefore choose the schedule in the bulk such that corresponding schedule on the boundary plaquettes leads to hook errors along their {\it diagonals}.
+
+While our schedule achieves full circuit-level distance in the bulk, at the boundaries, some hook errors can still reduce the distance slightly.
+Since this distance reduction is limited to the boundary of the system, its effect is excepted to become negligible for large code distances.
+Nonetheless, adding flag qubits on boundary plaquettes (at a subleading cost in qubit number) may be beneficial for finite system sizes and realistic noise models.
+Interestingly, our circuit does not admit any single hook error that alone reduces the circuit-level code distance (other than at the corners of the system).
+Instead, only certain combinations of several hook errors along the edge can create a shortcut for a logical operator and thus reduce the circuit-level distance.
+We refer to these combinations as ``fractional hook errors.''
+Specifically, we find that a combination of three weight-2 hook errors and two individual data-qubit errors near the boundary is equivalent to a sequence of six data-qubit errors along the boundary, forming a piece of a logical operator [see Fig.~\ref{fig:malign_and_schedule}(b)].
+Therefore, we conclude that the the circuit-level distance along the boundaries is reduced assymptotically by a factor of $5/6$.
+Indeed, we verify numerically that the circuit-level distance up to $d=13$ is given by $d_{\mathrm{circ}} = d - \left\lfloor \frac{d+3}{6} \right\rfloor$.
+
+\section{Simulations}
+\label{sec:simulations}
+
+We compare for the four circuits constructions discussed above using Monte Carlo simulations: our circuit (per-color schedule, one auxiliary per plaquette), the optimized uniform single-auxiliary circuit~\cite{lee2025colorcode}, the middle-out circuit~\cite{gidney2023colorcode}, and the superdense circuit~\cite{gidney2023colorcode}.
+We simulate logical idling (memory experiments) in the Z basis under the realistic superconducting-inspired (SI1000) error model \cite{Gidney2022benchmarkingplanar} using Stim \cite{gidney2021stim}.
+We run $d$ rounds of syndrome extraction per shot, where all Z and X stabilizers are measured in each round, and report logical error rates per round.
+Decoding is performed with the Tesseract decoder~\cite{tesseract2024} which is readily applied to all four circuits for fair comparison.
+The decoder recieves syndrome information for both X and Z type stabilizers (this is required for the flagging of hook errors in the superdense circuit).
+
+Fig.~\ref{fig:comparison} summarizes the comparison.
+Panel (a) shows the logical error rate versus physical error rate for the different circuits at several code distances.
+Panel (b) shows the logical error rate versus total number of qubits at a fixed physical error rate.
+Panel (c) shows the extrapolated teraquop footprint versus physical error rate for the different circuits.
+Our circuit achieves a XXX\% reduction in teraquop footprint at physical error rate $p = XXX\%$ compared to the next-best alternative.
+The circuits and Python code used to generate these results are available at ???????.
+
+\begin{figure}[t]
+\centering
+\figureplaceholder{Figure 2(a): logical error rate vs physical error rate}
+\figureplaceholder{Figure 2(b): logical error rate vs total qubits at fixed $p$}
+\figureplaceholder{Figure 2(c): teraquop footprint vs physical error rate}
+\caption{\textbf{Comparison of color code circuits.}
+\textbf{(a)} Logical error rate vs.\ physical error rate for the different circuits at several code distances.
+\textbf{(b)} Logical error rate vs.\ total number of qubits at a fixed physical error rate.
+\textbf{(c)} Teraquop footprint vs.\ physical error rate for the different circuits.}
+\label{fig:comparison}
+\end{figure}
+
+\section{Summary}
+\label{sec:summary}
+
+We have presented a syndrome extraction circuit for the 2D color code that uses a single auxiliary qubit per plaquette yet maintains full circuit-level code distance in the bulk.
+The key idea is to assign a distinct CNOT schedule to each plaquette color, chosen to avoid the hook errors malign for that color.
+Our circuit has minimal depth: six time steps for all X stabilizers and six for all Z stabilizers.
+At the boundary, no single hook error reduces the distance; only combinations of hook errors (fractional hook errors) do.
+We have demonstrated that our circuit outperform the previous state-of-the-art circuits through Monte Carlo simulations.
+In conjunction with our schedule (or with other circuits for the color code), further improvement in logical error rates may be achieved by measuring Y-type stabilizers in addition to X and Z.
+
+We note that, while in the surface code the effects of malign hook errors generated by a poor schedule can be mitigated by alternating between the schedule and its reverse ~\cite{bluvstein2025architectural, gidney2024alternating}, the same trick does not work in the color code.
+This is because in the conventional syndrome extraction circuit for the color code, the X and Z stabilizers are measured in separate rounds such that hook errors are purely spatial rather than diagonal in space-time.
+
+In future work, it may be interesting to study the performance of our circuit within various lattice surgery procedures as well as magic state cultivation.
+We hope that insights from this work along with a similar analysis will be able to guide the design of more efficient syndrome extraction circuits for other code families.
+These ideas may also be useful alongside automated tools for the design of syndrome extraction circuits such as those in Refs.~\cite{prophunt2026,alphasyndrome2026}.
+
+\acknowledgments
+
+We thank Ron Cohen, Shoham Jacoby, Peter-Jan H. S.
+Derks, and Craig Gidney for useful discussions.
+
+\bibliography{references}
+
+\end{document}
