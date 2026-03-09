@@ -52,6 +52,7 @@ urlcolor=nightblue]{hyperref}
 
 \author{Gilad Kishony}
 \affiliation{Classiq Technologies. 3 Daniel Frisch Street, Tel Aviv-Yafo, 6473104, Israel.}
+\author{Austin Fowler}
 
 \begin{abstract}
 Syndrome extraction in the planar color code is complicated by high weight stabilizers and hook errors that can reduce circuit-level distance.
@@ -63,8 +64,10 @@ We propose a single-auxiliary syndrome extraction circuit with color-dependent g
 % Any spatially uniform circuit that uses a single auxiliary qubit per plaquette suffers a reduction in circuit-level code distance by a factor of two due to hook errors.
 % We propose a syndrome extraction circuit that uses a single auxiliary per plaquette but assigns a different gate schedule to plaquettes of each color, so that all malign hook errors are avoided and full circuit-level distance is preserved in the bulk.
 The circuit has minimal depth: all X stabilizers are measured in parallel in six time steps, and all Z stabilizers in six time steps.
-At the boundary, no single hook error alone reduces the distance; only certain combinations of hook errors do, which we call fractional hook errors.
-We compare our circuit to uniform single-auxiliary, middle-out, and superdense circuits in Monte Carlo simulations and find a XXX\% reduction in teraquop footprint under the realistic SI1000 error model at physical error rate $p = XXX\%$ compared to the next-best alternative.
+Furthermore, this schedule can be readily applied to the XYZ color code, achieving an enhanced temporal distance. 
+We find that at the boundary, no single hook error alone reduces the distance; only certain combinations of hook errors do, which we call fractional hook errors.
+We demonstrate that our circuit outperforms the previous state-of-the-art circuits through Monte Carlo simulations over a range of circuit-level noise models and physical error rates.
+% We compare our circuit to uniform single-auxiliary, middle-out, and superdense circuits in Monte Carlo simulations and find a XXX\% reduction in teraquop footprint under the realistic SI1000 error model at physical error rate $p = XXX\%$ compared to the next-best alternative.
 \end{abstract}
 
 \maketitle
@@ -84,7 +87,7 @@ A hook error is an error on an auxiliary qubit midway through syndrome extractio
 In the surface code, a favorable syndrome extraction schedule can avoid all malign hook errors that lead to circuit-level distance reduction~\cite{kishony2025surface}.
 In the color code, by contrast, any spatially uniform circuit that uses the conventional single auxiliary qubit per plaquette for syndrome extraction suffers a reduction in the circuit-level code distance by a factor of two, which undermines its competitive edge.
 
-Much work has been done on the design of syndrome extraction circuits for the color code \cite{beverland2021cost, lee2025colorcode, gidney2023colorcode, yoshida2025lowdepthcolorcode, PRXQuantum.5.030352}.
+Much work has been done on the design of syndrome extraction circuits for the color code \cite{Baireuther_2019, beverland2021cost, lee2025colorcode, gidney2023colorcode, yoshida2025lowdepthcolorcode, PRXQuantum.5.030352}.
 In particular, Beverland et al.~\cite{beverland2021cost} and Lee et al.~\cite{lee2025colorcode} optimized spatially uniform single-auxiliary circuits (three qubits per plaquette), showing substantial logical error rate improvements, yet the distance-halving limitation remains.
 Gidney and Jones~\cite{gidney2023colorcode} suggested circuits that are not of this form: the ``middle-out'' circuit uses zero auxiliaries per plaquette (two qubits per plaquette), and the ``superdense'' circuit uses two auxiliaries per plaquette (four qubits per plaquette).
 The middle-out circuit suffers the same halved distance but reduces the total number of qubits required to achieve a given circuit-level distance.
@@ -184,9 +187,11 @@ This underlines the impossibility of avoiding the distance halving problem with 
 To preserve full circuit-level distance in the bulk, we assign a different schedule to plaquettes of each color such that all malign hook errors are avoided [Figure~\ref{fig:malign_and_schedule}(b)].
 Furthermore, we design our circuit such that the schedules of neighboring plaquettes do not conflict (i.e. do not access the same data qubits at the same time) such that all stabilizers of the same Pauli type are measured in parallel using the minimal six steps of two-qubit gates.
 On the boundaries of the system, some plaquettes are trapezoidal and have four data qubits, rather than six.
-For simplicity, on these plaquettes, we simply assign the same schedule as for the bulk plaquettes of the same color, omitting the gates coupling the two data qubits that are not present.
+For simplicity, on these plaquettes, we assign the same schedule as for the bulk plaquettes of the same color, omitting the gates coupling the two data qubits that are not present.
 Finally, we note that any weight-2 correlated error on these weight-4 plaquettes which coincides with one of its edges is malign.
 We therefore choose the schedule in the bulk such that corresponding schedule on the boundary plaquettes leads to hook errors along their {\it diagonals}.
+Subject to all of the constraints above, there remain multiple possible schedules of which we select one in an arbitrary manner.
+It may be interesting to explore the performance of the alternatives in future work.
 
 While our schedule achieves full circuit-level distance in the bulk, at the boundaries, some hook errors can still reduce the distance slightly.
 Since this distance reduction is limited to the boundary of the system, its effect is excepted to become negligible for large code distances.
@@ -198,55 +203,88 @@ Specifically, we find that a combination of three weight-2 hook errors and two i
 Therefore, we conclude that the the circuit-level distance along the boundaries is reduced assymptotically by a factor of $5/6$.
 Indeed, we verify numerically that the circuit-level distance up to $d=13$ is given by $d_{\mathrm{circ}} = d - \left\lfloor \frac{d+3}{6} \right\rfloor$.
 
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{error_vs_qubits_combined_data_only.pdf}
+  \caption{\textbf{Logical error rate vs.\ total qubit count across noise models and error rates.}
+  Top row: SI1000 noise model. Middle row: uniform depolarizing noise model. Bottom row: noisy CNOT noise model.
+  Physical error rates increase from left to right.
+  Solid lines: our circuits; dashed lines: previous work.
+  Highlights show hypotheses with likelihoods within a factor of 1000 of the max likelihood hypothesis, given the sampled data.}
+  \label{fig:error_vs_qubits}
+\end{figure*}
+
 \section{Simulations}
 \label{sec:simulations}
 
-We compare for the four circuits constructions discussed above using Monte Carlo simulations: our circuit (per-color schedule, one auxiliary per plaquette), the optimized uniform single-auxiliary circuit~\cite{lee2025colorcode}, the middle-out circuit~\cite{gidney2023colorcode}, and the superdense circuit~\cite{gidney2023colorcode}.
-We simulate logical idling (memory experiments) in the Z basis under the realistic superconducting-inspired (SI1000) error model \cite{Gidney2022benchmarkingplanar} using Stim \cite{gidney2021stim}.
-We run $d$ rounds of syndrome extraction per shot, where all Z and X stabilizers are measured in each round, and report logical error rates per round.
-Decoding is performed with the Tesseract decoder~\cite{tesseract2024} which is readily applied to all four circuits for fair comparison.
-The decoder recieves syndrome information for both X and Z type stabilizers (this is required for the flagging of hook errors in the superdense circuit).
+We compare our circuit (color-dependent) against the three other circuits constructions discussed above using Monte Carlo simulations: the optimized uniform single-auxiliary circuit~\cite{lee2025colorcode} (tri-optimal), the middle-out circuit~\cite{gidney2023colorcode}, and the superdense circuit~\cite{gidney2023colorcode}.
+We also simulate the XYZ versions \cite{gidney2023colorcode} of the tri-optimal circuit and the color-dependent circuit.
+In these versions, instead of measuring X and Z stabilizers in each round, we cycle through measurements of the X, Y, and Z stabilizers (taking advantage of the self-dual nature of the color code).
+The tri-optimal XYZ circuit was established as the state-of-the-art for the realistic superconducting-inspired (SI1000) noise model \cite{Gidney2021faulttolerant} in Ref.~\cite{koutsioumpas2025colourcodesreachsurface}.
 
-Fig.~\ref{fig:comparison} summarizes the comparison.
-Panel (a) shows the logical error rate versus physical error rate for the different circuits at several code distances.
-Panel (b) shows the logical error rate versus total number of qubits at a fixed physical error rate.
-Panel (c) shows the extrapolated teraquop footprint versus physical error rate for the different circuits.
-Our circuit achieves a XXX\% reduction in teraquop footprint at physical error rate $p = XXX\%$ compared to the next-best alternative.
-The circuits and Python code used to generate these results are available at ???????.
+We simulate logical idling (memory experiments) in the Z basis under circuit-level noise using Stim \cite{gidney2021stim}.
+We run $d$ rounds of syndrome extraction per shot, and report logical error rates per round.
+Decoding is performed with the Tesseract decoder~\cite{tesseract2024} which is readily applied to all six circuits for fair comparison.
+The decoder recieves syndrome information from all measured stabilizers in all circuits (this is required for the flagging of hook errors in the superdense circuit).
+The circuits and Python code used to generate these results are available at \url{https://github.com/kishonyWIS/syndrome_extraction_optimization}.
 
-\begin{figure}[t]
-\centering
-\figureplaceholder{Figure 2(a): logical error rate vs physical error rate}
-\figureplaceholder{Figure 2(b): logical error rate vs total qubits at fixed $p$}
-\figureplaceholder{Figure 2(c): teraquop footprint vs physical error rate}
-\caption{\textbf{Comparison of color code circuits.}
-\textbf{(a)} Logical error rate vs.\ physical error rate for the different circuits at several code distances.
-\textbf{(b)} Logical error rate vs.\ total number of qubits at a fixed physical error rate.
-\textbf{(c)} Teraquop footprint vs.\ physical error rate for the different circuits.}
-\label{fig:comparison}
-\end{figure}
+We test the performance of the circuits under three different circuit-level noise models: the SI1000 noise model, the uniform depolarizing noise model, and the noisy CNOT noise model [see Appendix~\ref{sec:noise_models}].
+Fig.~\ref{fig:error_vs_qubits} shows the logical error rate per round versus total number of qubits; solid lines correspond to our circuits and dashed lines to previous work.
+Data is shown for different physical error rates for each noise model.
+
+For all noise models and physical error rates considered, our circuits already match or surpass the performance of the previous state-of-the-art at the modest code distances simulated here, in terms of the footprint (number of qubits) needed to reach a desired logical error rate.
+Because the scaling of logical error rate versus number of qubits is better for our circuits, as evident from the data, this advantage should increase as the distance increases.
+This behavior is consistent with the analytical argument above relating footprint to circuit-level distance, although that argument determines the scaling of the logical error rate with distance only at asymptotically low physical error rates.
+Regardless, our circuits perform well even at relatively high physical error rates that are achievable with today's hardware.
+Since our circuit suffers from reduced distance only at the boundaries of the system, its performance is expected to improve further at higher distances, where boundary effects are suppressed; the corresponding lines curving slightly downwards with increasing qubit count are consistent with this expectation.
+
+The advantage of our circuits is most clearly visible in the noisy CNOT noise model.
+While this model includes errors equivallent to faults at all circuit locations with a probability proportional to $p$, the effect of hook errors is highlighted there because they are no less likely than other faults - unlike in the SI1000 model, where measurement errors are relatively likely.
+In the noisy CNOT model the difference in scaling between our circuits and the alternatives is therefore most pronounced.
+In the uniform depolarizing noise model, by contrast, the differences in performance between the circuits are quite small.
+For the realistic SI1000 noise model, which is of practical interest, we find by extrapolation to low logical error rates that the teraquop footprint achieved by our circuits is roughly 20\% smaller than that of the next-best circuit across the physical error rates considered.
 
 \section{Summary}
 \label{sec:summary}
 
 We have presented a syndrome extraction circuit for the 2D color code that uses a single auxiliary qubit per plaquette yet maintains full circuit-level code distance in the bulk.
-The key idea is to assign a distinct CNOT schedule to each plaquette color, chosen to avoid the hook errors malign for that color.
-Our circuit has minimal depth: six time steps for all X stabilizers and six for all Z stabilizers.
+The key idea is to assign a distinct CNOT schedule to each plaquette color, chosen to avoid the hook errors which are malign for that color.
+Our circuit has minimal depth: all stabilizers of the same Pauli type are measured in parallel in six time steps.
 At the boundary, no single hook error reduces the distance; only combinations of hook errors (fractional hook errors) do.
-We have demonstrated that our circuit outperform the previous state-of-the-art circuits through Monte Carlo simulations.
-In conjunction with our schedule (or with other circuits for the color code), further improvement in logical error rates may be achieved by measuring Y-type stabilizers in addition to X and Z.
+We have demonstrated that our circuit outperforms the previous state-of-the-art circuits through Monte Carlo simulations.
+We also adapt the XYZ color code circuit to use our schedule, achieving a further reduction in the footprint in some cases.
 
 We note that, while in the surface code the effects of malign hook errors generated by a poor schedule can be mitigated by alternating between the schedule and its reverse ~\cite{bluvstein2025architectural, gidney2024alternating}, the same trick does not work in the color code.
 This is because in the conventional syndrome extraction circuit for the color code, the X and Z stabilizers are measured in separate rounds such that hook errors are purely spatial rather than diagonal in space-time.
 
 In future work, it may be interesting to study the performance of our circuit within various lattice surgery procedures as well as magic state cultivation.
-We hope that insights from this work along with a similar analysis will be able to guide the design of more efficient syndrome extraction circuits for other code families.
+We hope that insights from this work along with a similar analysis of the nature of hook errors will be able to guide the design of more efficient syndrome extraction circuits for other code families.
 These ideas may also be useful alongside automated tools for the design of syndrome extraction circuits such as those in Refs.~\cite{prophunt2026,alphasyndrome2026}.
 
 \acknowledgments
 
-We thank Ron Cohen, Shoham Jacoby, Peter-Jan H. S.
-Derks, and Craig Gidney for useful discussions.
+We thank Ron Cohen, Shoham Jacoby, Peter-Jan H. S. Derks, Stergios Koutsioumpas, and Craig Gidney for useful discussions.
+
+\appendix
+
+\section{Noise models}
+\label{sec:noise_models}
+
+We use three circuit-level noise models in our simulations. In each case a single parameter $p$ sets the physical error rate.
+
+\paragraph{SI1000 (superconducting-inspired).}
+The SI1000 model~\cite{Gidney2021faulttolerant} is designed to capture typical noise in superconducting qubits.
+Idle qubits undergo depolarization at rate $p/10$, with an additional depolarization $2p$ when idling during a measurement or reset operation on other qubits.
+Single-qubit Clifford gates are followed by single-qubit depolarizing noise with probability $p/10$; two-qubit gates are followed by two-qubit depolarizing noise with probability $p$.
+Measurements outcomes are flipped with probability $5p$.
+Reset operations prepare a flipped state with probability $2p$.
+
+\paragraph{Uniform depolarizing.}
+The uniform depolarizing model assigns the same error probability $p$ to every circuit location: idle depolarization, single-qubit depolarization after each 1-qubit gate, two-qubit depolarization after each 2-qubit gate, flipped measurement outcomes, and reset errors.
+
+\paragraph{Noisy CNOT.}
+The noisy-CNOT model applies two-qubit depolarizing noise with probability $p$ after every CNOT gate only.
+While this model is minimalistic, it still generates all circuit-level faults captured by the other two models with probability linear in $p$.
 
 \bibliography{references}
 
