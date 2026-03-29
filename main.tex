@@ -223,7 +223,7 @@ We simulate logical idling (memory experiments) in the Z basis under circuit-lev
 We run $d$ rounds of syndrome extraction per shot and report logical error rates per round.
 Decoding is performed with the Tesseract decoder~\cite{tesseract2024}, which can be readily applied to all six circuits for a fair comparison.
 The decoder receives syndrome information from all measured stabilizers in all circuits; this is required for the flagging of hook errors in the superdense circuit.
-The circuits and Python code used to generate these results are available at \url{https://github.com/kishonyWIS/syndrome_extraction_optimization}.
+The circuits and Python code used to generate these results are available at \url{https://github.com/Classiq/classiq-library/tree/main/algorithms/error_correction/}.
 
 We test the performance of the circuits under three different circuit-level noise models: the SI1000 noise model, the uniform depolarizing noise model, and the noisy CNOT noise model [see Appendix~\ref{sec:noise_models}].
 Fig.~\ref{fig:error_vs_qubits} shows the logical error rate per round versus the total number of qubits, with solid lines corresponding to our circuits and dashed lines to previous work.
